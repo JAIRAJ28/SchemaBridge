@@ -1,12 +1,35 @@
 from typing import Annotated
 
-from fastapi import Query, Request
+from fastapi import Depends, Header, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.constants import ErrorCode
+from config.database import get_database_session
 from config.settings import get_settings
-from contracts.common import PaginationParams
+from contracts.page import PaginationParams
 from contracts.errors import ErrorDetail
-from middleware.exception_handler import ApplicationError
+from middleware.error_handler import ApplicationError
+
+
+DatabaseSession = Annotated[
+    AsyncSession,
+    Depends(get_database_session),
+]
+
+
+def get_actor_id(
+    x_actor_id: Annotated[
+        str,
+        Header(min_length=1, max_length=128),
+    ],
+) -> str:
+    return x_actor_id
+
+
+ActorId = Annotated[
+    str,
+    Depends(get_actor_id),
+]
 
 
 def get_request_id(request: Request) -> str:

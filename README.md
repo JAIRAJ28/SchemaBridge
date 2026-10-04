@@ -1,134 +1,83 @@
 # SchemaBridge
-MapSure is an AI-assisted data migration workbench for schema mapping, versioned migration plans, and deterministic validation. It supports human-approved execution into a mock target, invalid-record quarantine, duplicate-safe retries, source-to-target reconciliation, rollback, and audit history.
 
-## Current product scope
+SchemaBridge is an AI-assisted data migration workbench for one bounded JSON
+dataset. Phase 1 provides immutable input snapshots, deterministic validation,
+profiling, retry foundations, and audit history.
+
+## Current scope
 
 - One UTF-8 JSON source dataset containing a top-level array of objects.
 - One source schema and one target schema per migration workspace.
-- Maximum uncompressed upload size: 20 MB.
+- Maximum upload size: 20 MB.
 - Maximum source records: 10,000.
+- Empty datasets are rejected.
 - Maximum fields per schema and record: 200.
-- Flat records only; nested objects and arrays are not supported.
+- Flat records only; nested objects and arrays are rejected.
 - Supported types: string, integer, decimal, boolean, date, and datetime.
 - Exactly one required, non-nullable, unique target business key.
-- Source undeclared fields are preserved for profiling; target undeclared fields are rejected.
-- Inputs above the configured limits are rejected without truncation.
+- Source undeclared fields are preserved for profiling.
+- Target undeclared fields are rejected.
 - Arbitrary Python, JavaScript, SQL, and user-defined transformations are not supported.
 
+## End-to-end Phase 1 flow
 
+```text
+Create project
+→ submit source and target schemas
+→ upload JSON records
+→ validate limits and structure
+→ preserve the original upload
+→ create deterministic hashes
+→ store an immutable dataset snapshot and source records
+→ profile field types, missing values, lengths, and duplicates
+→ preserve audit history
+```
 
+## Project structure
+
+```text
 SchemaBridge/
 ├── main.py
+├── alembic.ini
+├── docker-compose.yml
 ├── requirements.txt
-├── README.md
-├── .env.example
-├── .gitignore
-│
-├── config/
-│   ├── __init__.py
-│   ├── settings.py
-│   ├── database.py
-│   ├── logging.py
-│   ├── security.py
-│   └── constants.py
-│
-├── routes/
-│   ├── __init__.py
-│   ├── dependencies.py
-│   ├── health_routes.py
-│   ├── project_routes.py
-│   ├── dataset_routes.py
-│   ├── schema_routes.py
-│   └── profile_routes.py
-│
-├── controller/
-│   ├── __init__.py
-│   ├── project_controller.py
-│   ├── dataset_controller.py
-│   ├── schema_controller.py
-│   └── profile_controller.py
-│
-├── contracts/
-│   ├── __init__.py
-│   ├── common.py
-│   ├── project.py
-│   ├── schema_definition.py
-│   ├── dataset.py
-│   ├── profile.py
-│   ├── audit.py
-│   └── errors.py
-│
-├── models/
-│   ├── __init__.py
-│   ├── base.py
-│   ├── project.py
-│   ├── schema_snapshot.py
-│   ├── dataset_snapshot.py
-│   ├── source_record.py
-│   ├── dataset_profile.py
-│   ├── idempotency_record.py
-│   └── audit_event.py
-│
-├── repositories/
-│   ├── __init__.py
-│   ├── project_repository.py
-│   ├── schema_repository.py
-│   ├── dataset_repository.py
-│   ├── profile_repository.py
-│   ├── idempotency_repository.py
-│   └── audit_repository.py
-│
-├── services/
-│   ├── __init__.py
-│   ├── project_service.py
-│   ├── schema_service.py
-│   ├── dataset_ingestion_service.py
-│   ├── json_validation_service.py
-│   ├── canonicalization_service.py
-│   ├── fingerprint_service.py
-│   ├── profiling_service.py
-│   ├── storage_service.py
-│   ├── idempotency_service.py
-│   └── audit_service.py
-│
-├── middleware/
-│   ├── __init__.py
-│   ├── request_context.py
-│   ├── exception_handler.py
-│   ├── request_logging.py
-│   └── security_headers.py
-│
-├── storage/
-│   ├── __init__.py
-│   ├── base.py
-│   ├── local_storage.py
-│   └── s3_storage.py
-│
-├── database/
-│   ├── alembic.ini
-│   ├── migrations/
-│   │   ├── env.py
-│   │   ├── script.py.mako
-│   │   └── versions/
-│   │       └── 001_phase_one_foundation.py
-│   └── seed/
-│       └── README.md
-│
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   ├── contract/
-│   └── fixtures/
-│
-├── docs/
-│   ├── architecture.md
-│   ├── api-contracts.md
-│   ├── schema-format.md
-│   ├── limits.md
-│   ├── data-retention.md
-│   └── phase-1-checklist.md
-│
-└── deployment/
-    ├── backend.Dockerfile
-    ├── docker-compose.yml
-    └── healthcheck.sh
+├── config/          # Settings, constants, and database sessions
+├── contracts/       # Pydantic request and response validation
+├── models/          # SQLAlchemy persistence models
+├── repositories/    # Database queries and writes
+├── services/        # JSON checks, upload, hashes, and data summary
+├── routes/          # FastAPI endpoints and dependencies
+├── middleware/      # Request IDs and consistent API errors
+├── storage/         # Local immutable upload storage
+├── database/        # Alembic migrations
+└── deployment/      # Backend Dockerfile
+```
+
+## Run locally
+
+```bash
+docker compose up -d postgres
+venv/bin/alembic upgrade head
+venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+Check the API:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Expected response:
+
+```json
+{"status":"healthy"}
+```
+
+Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
+
+## Database verification
+
+```bash
+venv/bin/alembic current
+venv/bin/alembic check
+```

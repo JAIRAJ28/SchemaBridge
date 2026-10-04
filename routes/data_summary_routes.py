@@ -3,39 +3,38 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
-from contracts.schema import SchemaDefinition
-from contracts.schema_result import SchemaSnapshotResponse
+from contracts.data_summary_result import DatasetProfileResponse
 from routes.route_helpers import (
     ActorId,
     DatabaseSession,
     get_request_id,
 )
-from services.schema_actions import create_schema_snapshot_service
+from services.data_summary import profile_dataset
 
 
 router = APIRouter(
-    prefix="/projects/{project_id}/schemas",
-    tags=["schemas"],
+    prefix="/projects/{project_id}/datasets/{dataset_id}/profile",
+    tags=["profiles"],
 )
 
 
 @router.post(
     "",
-    response_model=SchemaSnapshotResponse,
+    response_model=DatasetProfileResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_schema_route(
+async def create_profile_route(
     project_id: UUID,
-    request: SchemaDefinition,
+    dataset_id: UUID,
     actor_id: ActorId,
     session: DatabaseSession,
     request_id: Annotated[str, Depends(get_request_id)],
-) -> SchemaSnapshotResponse:
-    snapshot = await create_schema_snapshot_service(
+) -> DatasetProfileResponse:
+    profile = await profile_dataset(
         session,
         project_id=project_id,
+        dataset_id=dataset_id,
         actor_id=actor_id,
         request_id=request_id,
-        schema=request,
     )
-    return SchemaSnapshotResponse.model_validate(snapshot)
+    return DatasetProfileResponse.model_validate(profile)

@@ -1,4 +1,3 @@
-# Maximum_upload: 20
 from enum import Enum
 
 

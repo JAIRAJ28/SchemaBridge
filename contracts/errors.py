@@ -3,7 +3,7 @@ from typing import Any
 from pydantic import Field
 
 from config.constants import ErrorCode
-from contracts.common import StrictContract
+from contracts.page import StrictContract
 
 
 class ErrorDetail(StrictContract):

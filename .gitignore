@@ -4,5 +4,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.ruff_cache/
+data/
 venv/
 REVIEWED_AGENTIC_DATA_MIGRATION_SYSTEM_DESIGN.md

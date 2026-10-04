@@ -2,3 +2,7 @@ fastapi
 pydantic>=2,<3
 pydantic-settings
 python-dotenv
+sqlalchemy[asyncio]
+psycopg[binary]
+alembic
+uvicorn
