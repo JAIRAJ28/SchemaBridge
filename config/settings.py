@@ -87,6 +87,49 @@ class Settings(BaseSettings):
         default=1800,
         ge=60,
     )
+    ai_api_key: SecretStr = SecretStr("")
+
+    ai_model: str = Field(
+        default="gpt-4.1-mini",
+        min_length=1,
+        max_length=100,
+    )
+
+    ai_temperature: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=2.0,
+    )
+
+    ai_timeout_seconds: int = Field(
+        default=60,
+        ge=1,
+        le=300,
+    )
+
+    ai_max_retries: int = Field(
+        default=2,
+        ge=0,
+        le=5,
+    )
+
+    ai_max_tool_calls: int = Field(
+        default=12,
+        ge=1,
+        le=30,
+    )
+
+    ai_max_plan_revisions: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+    )
+
+    ai_prompt_version: str = Field(
+        default="1.0",
+        min_length=1,
+        max_length=32,
+    )
 
     @model_validator(mode="after")
     def validate_related_settings(self) -> "Settings":

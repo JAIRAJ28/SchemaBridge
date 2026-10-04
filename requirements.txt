@@ -6,3 +6,6 @@ sqlalchemy[asyncio]
 psycopg[binary]
 alembic
 uvicorn
+langchain
+langgraph
+langchain-openai
