@@ -8,9 +8,12 @@ from models.project import MigrationProject
 from models.schema_version import SchemaSnapshot
 from models.source_record import SourceRecord
 from models.plan_version import MigrationPlanVersion
+from models.agent_run import AgentQuestion, AgentRun
 
 __all__ = [
     "AuditEvent",
+    "AgentQuestion",
+    "AgentRun",
     "Base",
     "DatasetProfile",
     "DatasetSnapshot",

@@ -7,6 +7,7 @@ from config.database import (
     check_database_connection,
     close_database_connection,
 )
+from config.checkpoint import open_checkpointer
 from config.settings import get_settings
 from middleware.error_handler import (
     register_exception_handlers,
@@ -21,19 +22,23 @@ from routes.data_summary_routes import router as profile_router
 from routes.project_routes import router as project_router
 from routes.plan_routes import router as plan_router
 from routes.schema_routes import router as schema_router
+from routes.agent_routes import router as agent_router
 
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(
-    _application: FastAPI,
+    application: FastAPI,
 ) -> AsyncIterator[None]:
     await check_database_connection()
-
-    yield
-
-    await close_database_connection()
+    try:
+        async with open_checkpointer() as checkpointer:
+            await checkpointer.setup()
+            application.state.checkpointer = checkpointer
+            yield
+    finally:
+        await close_database_connection()
 
 
 def create_application() -> FastAPI:
@@ -70,6 +75,10 @@ def create_application() -> FastAPI:
     )
     application.include_router(
         dry_run_router,
+        prefix=settings.api_prefix,
+    )
+    application.include_router(
+        agent_router,
         prefix=settings.api_prefix,
     )
 

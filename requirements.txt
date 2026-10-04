@@ -8,4 +8,5 @@ alembic
 uvicorn
 langchain
 langgraph
+langgraph-checkpoint-postgres
 langchain-openai

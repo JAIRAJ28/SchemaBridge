@@ -90,9 +90,15 @@ class Settings(BaseSettings):
     ai_api_key: SecretStr = SecretStr("")
 
     ai_model: str = Field(
-        default="gpt-4.1-mini",
+        default="Qwen/Qwen3-4B-Instruct-2507:fastest",
         min_length=1,
         max_length=100,
+    )
+
+    ai_base_url: str = Field(
+        default="https://router.huggingface.co/v1",
+        min_length=1,
+        max_length=500,
     )
 
     ai_temperature: float = Field(
