@@ -21,5 +21,6 @@ class ProjectResponse(StrictContract):
     description: str | None
     target_namespace: str
     status: str
+    target_revision: int
     created_at: datetime
     updated_at: datetime

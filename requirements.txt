@@ -10,3 +10,6 @@ langchain
 langgraph
 langgraph-checkpoint-postgres
 langchain-openai
+PyJWT>=2,<3
+bcrypt>=4,<5
+email-validator>=2,<3

@@ -1,6 +1,7 @@
 from typing import Annotated
 
-from fastapi import Depends, Header, Query, Request
+from fastapi import Depends, Query, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.constants import ErrorCode
@@ -9,6 +10,7 @@ from config.settings import get_settings
 from contracts.page import PaginationParams
 from contracts.errors import ErrorDetail
 from middleware.error_handler import ApplicationError
+from services.auth_actions import decode_access_token
 
 
 DatabaseSession = Annotated[
@@ -17,13 +19,22 @@ DatabaseSession = Annotated[
 ]
 
 
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
 def get_actor_id(
-    x_actor_id: Annotated[
-        str,
-        Header(min_length=1, max_length=128),
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Depends(bearer_scheme),
     ],
 ) -> str:
-    return x_actor_id
+    if credentials is None or credentials.scheme.casefold() != "bearer":
+        raise ApplicationError(
+            error_code=ErrorCode.UNAUTHORIZED,
+            message="A bearer access token is required.",
+            status_code=401,
+        )
+    return decode_access_token(credentials.credentials)
 
 
 ActorId = Annotated[

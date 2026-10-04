@@ -11,6 +11,7 @@ from repositories.dataset_db import get_dataset_snapshot_by_id
 from repositories.history_db import create_audit_event
 from repositories.plan_db import (
     create_plan_version,
+    get_plan_version_by_id,
     get_plan_version_by_hash,
     update_plan_status,
 )
@@ -19,6 +20,32 @@ from repositories.schema_db import get_schema_snapshot_by_id
 from services.hash_tools import calculate_canonical_hash
 from services.plan_check import check_plan
 from services.rule_list import RULE_LIST_VERSION
+
+
+async def get_plan_service(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    plan_id: UUID,
+    actor_id: str,
+):
+    project = await get_project_by_id(
+        session,
+        project_id=project_id,
+        owner_id=actor_id,
+    )
+    plan = await get_plan_version_by_id(
+        session,
+        project_id=project_id,
+        plan_id=plan_id,
+    )
+    if project is None or plan is None:
+        raise ApplicationError(
+            error_code=ErrorCode.NOT_FOUND,
+            message="Migration plan was not found.",
+            status_code=404,
+        )
+    return plan
 
 
 async def create_plan_service(

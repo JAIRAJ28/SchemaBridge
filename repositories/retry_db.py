@@ -7,6 +7,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.retry_record import IdempotencyRecord
 
 
+async def get_idempotency_record(
+    session: AsyncSession,
+    *,
+    actor_id: str,
+    scope: str,
+    idempotency_key: str,
+) -> IdempotencyRecord | None:
+    result = await session.execute(
+        select(IdempotencyRecord).where(
+            IdempotencyRecord.actor_id == actor_id,
+            IdempotencyRecord.scope == scope,
+            IdempotencyRecord.idempotency_key == idempotency_key,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_active_idempotency_record(
     session: AsyncSession,
     *,

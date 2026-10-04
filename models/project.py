@@ -5,6 +5,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     String,
+    Integer,
     Uuid,
     func,
 )
@@ -43,6 +44,12 @@ class MigrationProject(CreatedAtMixin, Base):
         default="draft",
         server_default="draft",
     )
+    target_revision: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -54,5 +61,9 @@ class MigrationProject(CreatedAtMixin, Base):
         CheckConstraint(
             "status IN ('draft', 'active', 'completed', 'archived')",
             name="valid_status",
+        ),
+        CheckConstraint(
+            "target_revision >= 0",
+            name="nonnegative_target_revision",
         ),
     )

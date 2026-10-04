@@ -20,6 +20,7 @@ class Settings(BaseSettings):
         "production",
     ] = "development"
     api_prefix: str = "/api/v1"
+    frontend_origin: str = "http://localhost:3000"
 
     max_upload_bytes: int = Field(
         default=20 * 1024 * 1024,
@@ -89,6 +90,12 @@ class Settings(BaseSettings):
     )
     ai_api_key: SecretStr = SecretStr("")
 
+    jwt_secret: SecretStr = SecretStr("development-only-change-me")
+    jwt_algorithm: Literal["HS256"] = "HS256"
+    jwt_access_token_minutes: int = Field(default=60, ge=5, le=1440)
+    jwt_issuer: str = "schemabridge-api"
+    jwt_audience: str = "schemabridge-web"
+
     ai_model: str = Field(
         default="Qwen/Qwen3-4B-Instruct-2507:fastest",
         min_length=1,
@@ -147,6 +154,14 @@ class Settings(BaseSettings):
         if self.max_record_bytes > self.max_upload_bytes:
             raise ValueError(
                 "max_record_bytes cannot exceed max_upload_bytes."
+            )
+
+        jwt_secret = self.jwt_secret.get_secret_value()
+        if self.app_environment == "production" and (
+            jwt_secret == "development-only-change-me" or len(jwt_secret) < 32
+        ):
+            raise ValueError(
+                "Production requires a unique JWT secret of at least 32 characters."
             )
 
         return self

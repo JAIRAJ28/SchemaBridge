@@ -41,6 +41,9 @@ async def create_dry_run(
     accepted_count: int,
     rejected_count: int,
     result_hash: str,
+    rule_list_version: str,
+    engine_version: str,
+    target_revision: int,
     created_by: str,
 ) -> DryRun:
     dry_run = DryRun(
@@ -53,6 +56,9 @@ async def create_dry_run(
         accepted_count=accepted_count,
         rejected_count=rejected_count,
         result_hash=result_hash,
+        rule_list_version=rule_list_version,
+        engine_version=engine_version,
+        target_revision=target_revision,
         created_by=created_by,
     )
     session.add(dry_run)
@@ -106,6 +112,22 @@ async def list_dry_run_records(
         .order_by(DryRunRecord.row_ordinal.asc())
         .offset(offset)
         .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def list_accepted_dry_run_records(
+    session: AsyncSession,
+    *,
+    dry_run_id: UUID,
+) -> Sequence[DryRunRecord]:
+    result = await session.execute(
+        select(DryRunRecord)
+        .where(
+            DryRunRecord.dry_run_id == dry_run_id,
+            DryRunRecord.status == "accepted",
+        )
+        .order_by(DryRunRecord.row_ordinal.asc())
     )
     return result.scalars().all()
 

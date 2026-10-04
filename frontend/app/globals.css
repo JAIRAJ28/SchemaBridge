@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #17211d;
+  --color-muted: #66736d;
+  --color-paper: #f5f3ed;
+  --color-panel: #fffefa;
+  --color-line: #ddd9ce;
+  --color-brand: #176b57;
+  --color-brand-dark: #0d4b3c;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #f5f3ed; color: #17211d; }
+button:disabled { cursor: not-allowed; opacity: 0.45; }
+pre { scrollbar-width: thin; }

@@ -1,8 +1,18 @@
-from config.constants import SchemaRole
+from config.constants import SchemaRole, SupportedDataType
 from contracts.plan import FieldMapping, PlanCreate
 from contracts.plan_check import PlanCheckResult, PlanProblem
 from contracts.schema import SchemaDefinition
 from services.rule_list import get_rule
+
+
+RULE_OUTPUT_TYPES = {
+    "trim": SupportedDataType.STRING,
+    "parse_integer": SupportedDataType.INTEGER,
+    "parse_decimal": SupportedDataType.DECIMAL,
+    "parse_date": SupportedDataType.DATE,
+    "parse_boolean": SupportedDataType.BOOLEAN,
+    "concat": SupportedDataType.STRING,
+}
 
 
 def check_mapping_inputs(
@@ -105,6 +115,37 @@ def check_plan(
                     target_field=mapping.target_field,
                 )
             )
+        elif mapping.rules:
+            final_rule = mapping.rules[-1].rule
+            output_type = RULE_OUTPUT_TYPES.get(final_rule)
+
+            if final_rule == "copy" and len(mapping.source_fields) == 1:
+                source_field = next(
+                    (
+                        field
+                        for field in source_schema.fields
+                        if field.name == mapping.source_fields[0]
+                    ),
+                    None,
+                )
+                if source_field is not None:
+                    output_type = source_field.type
+
+            target_type = target_fields[mapping.target_field].type
+            if output_type is not None and output_type != target_type:
+                problems.append(
+                    PlanProblem(
+                        code="RULE_OUTPUT_TYPE_MISMATCH",
+                        message=(
+                            f"Rule '{final_rule}' produces {output_type.value} "
+                            f"but target field '{mapping.target_field}' requires "
+                            f"{target_type.value}."
+                        ),
+                        mapping_number=mapping_number,
+                        target_field=mapping.target_field,
+                        rule=final_rule,
+                    )
+                )
 
         problems.extend(
             check_mapping_inputs(

@@ -3,7 +3,11 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.constants import DatasetStatus, ErrorCode
+from config.constants import (
+    DatasetStatus,
+    ErrorCode,
+    TRANSFORMATION_ENGINE_VERSION,
+)
 from config.settings import get_settings
 from contracts.plan import PlanCreate
 from contracts.schema import SchemaDefinition
@@ -28,6 +32,7 @@ from repositories.schema_db import get_schema_snapshot_by_id
 from services.dataset_check import RecordToCheck, check_dataset_keys
 from services.hash_tools import calculate_canonical_hash
 from services.target_check import transform_and_check_record
+from services.rule_list import RULE_LIST_VERSION
 
 
 async def run_dry_run(
@@ -56,6 +61,12 @@ async def run_dry_run(
             error_code=ErrorCode.NOT_FOUND,
             message="A valid migration plan was not found.",
             status_code=404,
+        )
+    if plan_record.rule_list_version != RULE_LIST_VERSION:
+        raise ApplicationError(
+            error_code=ErrorCode.CONFLICT,
+            message="The plan uses an unavailable transformation-rule version.",
+            status_code=409,
         )
 
     dataset = await get_dataset_snapshot_by_id(
@@ -168,6 +179,9 @@ async def run_dry_run(
         accepted_count=accepted_count,
         rejected_count=rejected_count,
         result_hash=result_hash,
+        rule_list_version=RULE_LIST_VERSION,
+        engine_version=TRANSFORMATION_ENGINE_VERSION,
+        target_revision=project.target_revision,
         created_by=actor_id,
     )
     await create_dry_run_records(

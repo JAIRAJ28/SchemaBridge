@@ -21,6 +21,9 @@ class DryRunResponse(StrictContract):
     accepted_count: int
     rejected_count: int
     result_hash: str
+    rule_list_version: str
+    engine_version: str
+    target_revision: int
     created_by: str
     created_at: datetime
 

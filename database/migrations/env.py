@@ -28,6 +28,29 @@ config.set_main_option(
 
 target_metadata = Base.metadata
 
+LANGGRAPH_CHECKPOINT_TABLES = {
+    "checkpoint_migrations",
+    "checkpoints",
+    "checkpoint_blobs",
+    "checkpoint_writes",
+}
+
+
+def include_object(
+    object_,
+    name: str | None,
+    type_: str,
+    reflected: bool,
+    compare_to,
+) -> bool:
+    if (
+        type_ == "table"
+        and reflected
+        and name in LANGGRAPH_CHECKPOINT_TABLES
+    ):
+        return False
+    return True
+
 
 def run_migrations_offline() -> None:
     context.configure(
@@ -39,6 +62,7 @@ def run_migrations_offline() -> None:
         },
         compare_type=True,
         compare_server_default=True,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -51,6 +75,7 @@ def apply_migrations(connection) -> None:
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
+        include_object=include_object,
     )
 
     with context.begin_transaction():

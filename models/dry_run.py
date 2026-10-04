@@ -27,6 +27,15 @@ class TargetRecord(CreatedAtMixin, Base):
     business_key: Mapped[object] = mapped_column(JSONB, nullable=False)
     business_key_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     record_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    migration_run_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("migration_runs.id", ondelete="SET NULL"),
+    )
+    source_record_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("source_records.id", ondelete="RESTRICT"),
+    )
+    target_revision: Mapped[int | None] = mapped_column(Integer)
 
     __table_args__ = (
         UniqueConstraint(
@@ -34,6 +43,7 @@ class TargetRecord(CreatedAtMixin, Base):
             "business_key_hash",
             name="uq_target_record_business_key",
         ),
+        Index("ix_target_record_migration_run", "migration_run_id"),
     )
 
 
@@ -64,6 +74,9 @@ class DryRun(CreatedAtMixin, Base):
     accepted_count: Mapped[int] = mapped_column(Integer, nullable=False)
     rejected_count: Mapped[int] = mapped_column(Integer, nullable=False)
     result_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_list_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    engine_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_revision: Mapped[int] = mapped_column(Integer, nullable=False)
     created_by: Mapped[str] = mapped_column(String(128), nullable=False)
 
     __table_args__ = (
@@ -76,6 +89,10 @@ class DryRun(CreatedAtMixin, Base):
         CheckConstraint(
             "source_count = accepted_count + rejected_count",
             name="balanced_counts",
+        ),
+        CheckConstraint(
+            "target_revision >= 0",
+            name="nonnegative_target_revision",
         ),
         Index("ix_dry_run_project_plan", "project_id", "plan_id"),
     )
