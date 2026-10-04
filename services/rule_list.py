@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 
-
+RULE_LIST_VERSION = "1.0"
 @dataclass(frozen=True)
 class RuleInfo:
     name: str
     purpose: str
     minimum_inputs: int
     maximum_inputs: int
+
 
 
 RULES: dict[str, RuleInfo] = {

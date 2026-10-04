@@ -15,9 +15,11 @@ from middleware.request_id import (
     request_context_middleware,
 )
 from routes.dataset_routes import router as dataset_router
+from routes.dry_run_routes import router as dry_run_router
 from routes.health_routes import router as health_router
 from routes.data_summary_routes import router as profile_router
 from routes.project_routes import router as project_router
+from routes.plan_routes import router as plan_router
 from routes.schema_routes import router as schema_router
 
 settings = get_settings()
@@ -60,6 +62,14 @@ def create_application() -> FastAPI:
     )
     application.include_router(
         profile_router,
+        prefix=settings.api_prefix,
+    )
+    application.include_router(
+        plan_router,
+        prefix=settings.api_prefix,
+    )
+    application.include_router(
+        dry_run_router,
         prefix=settings.api_prefix,
     )
 
