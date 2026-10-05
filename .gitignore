@@ -29,6 +29,7 @@ Thumbs.db
 # Local project notes
 REVIEWED_AGENTIC_DATA_MIGRATION_SYSTEM_DESIGN.md
 PROJECT_PHASE_FLOW_GUIDE.md
+AI_EVALUATION_GPU_AND_SCALABILITY.md
 
 # Frontend dependencies, builds and tool caches
 node_modules/
@@ -41,3 +42,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Generated AI evaluation reports
+evaluation/results/

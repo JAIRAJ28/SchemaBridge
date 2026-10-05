@@ -46,6 +46,8 @@ class Settings(BaseSettings):
         default=100_000,
         gt=0,
     )
+    max_json_depth: int = Field(default=10, ge=1, le=50)
+    max_array_items: int = Field(default=10_000, gt=0)
 
     default_page_size: int = Field(
         default=50,
@@ -125,6 +127,18 @@ class Settings(BaseSettings):
         ge=0,
         le=5,
     )
+
+    ai_max_output_tokens: int = Field(
+        default=4096,
+        ge=256,
+        le=16384,
+    )
+
+    ai_structured_method: Literal[
+        "json_schema",
+        "function_calling",
+        "json_mode",
+    ] = "json_schema"
 
     ai_max_tool_calls: int = Field(
         default=12,

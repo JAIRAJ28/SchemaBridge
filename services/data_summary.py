@@ -33,6 +33,10 @@ def observed_type(value: Any) -> str:
         return "decimal"
     if isinstance(value, str):
         return "string"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, dict):
+        return "object"
     return "unsupported"
 
 

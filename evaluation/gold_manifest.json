@@ -1,0 +1,84 @@
+{
+  "case_count": 1000,
+  "cases_per_scenario": 50,
+  "category_counts": {
+    "concat_names": 50,
+    "default_if_missing": 50,
+    "duplicate_business_key": 50,
+    "exact_copy": 50,
+    "extra_source_fields": 50,
+    "invalid_boolean_quarantine": 50,
+    "invalid_date_quarantine": 50,
+    "invalid_numeric_quarantine": 50,
+    "lookup_status": 50,
+    "mixed_transformations": 50,
+    "nullable_values": 50,
+    "parse_boolean_valid": 50,
+    "parse_date_valid": 50,
+    "parse_decimal_valid": 50,
+    "parse_integer_valid": 50,
+    "renamed_copy": 50,
+    "semantic_blocker": 50,
+    "target_business_key_conflict": 50,
+    "target_constraint_violation": 50,
+    "trim_text": 50
+  },
+  "clarification_case_count": 50,
+  "dataset_version": "1.0.0",
+  "difficulty_counts": {
+    "easy": 300,
+    "hard": 350,
+    "medium": 350
+  },
+  "executable_case_count": 950,
+  "expected_error_code_counts": {
+    "BOOLEAN_PARSE_FAILED": 50,
+    "DATE_PARSE_FAILED": 50,
+    "DECIMAL_PARSE_FAILED": 50,
+    "DUPLICATE_BUSINESS_KEY": 100,
+    "INTEGER_PARSE_FAILED": 50,
+    "REQUIRED_TARGET_FIELD_MISSING": 200,
+    "TARGET_BUSINESS_KEY_CONFLICT": 50,
+    "TARGET_DATE_INVALID": 8,
+    "TARGET_DECIMAL_PRECISION_EXCEEDED": 8,
+    "TARGET_DECIMAL_SCALE_EXCEEDED": 8,
+    "TARGET_FIELD_CANNOT_BE_NULL": 8,
+    "TARGET_TEXT_TOO_LONG": 9,
+    "TARGET_TYPE_MISMATCH": 8,
+    "TARGET_VALUE_NOT_ALLOWED": 9
+  },
+  "expected_record_counts": {
+    "accepted": 1600,
+    "rejected": 400,
+    "total": 2000
+  },
+  "expected_rule_counts": {
+    "concat": 50,
+    "copy": 1234,
+    "default_if_missing": 50,
+    "lookup": 66,
+    "parse_boolean": 150,
+    "parse_date": 100,
+    "parse_decimal": 100,
+    "parse_integer": 150,
+    "trim": 250
+  },
+  "generation_seed": 20261005,
+  "proposal_status_counts": {
+    "needs_clarification": 50,
+    "ready_for_validation": 950
+  },
+  "review_status": "pending_human_review",
+  "rule_list_version": "2.0",
+  "scenario_count": 20,
+  "schema_format_version": "1.0",
+  "target_data_type_counts": {
+    "boolean": 150,
+    "date": 108,
+    "datetime": 50,
+    "decimal": 108,
+    "integer": 182,
+    "string": 1615
+  },
+  "usage": "evaluation_only"
+}

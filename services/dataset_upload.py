@@ -42,6 +42,10 @@ def value_matches_type(value: object, data_type: str) -> bool:
         return isinstance(value, bool)
     if data_type in {"date", "datetime"}:
         return isinstance(value, str)
+    if data_type == "array":
+        return isinstance(value, list)
+    if data_type == "object":
+        return isinstance(value, dict)
     return False
 
 
@@ -59,6 +63,12 @@ def record_matches_schema(record: dict, schema: SchemaDefinition) -> bool:
             continue
         if not value_matches_type(value, field.type.value):
             return False
+        if field.type.value == "array" and field.items_type is not None:
+            if not all(
+                value_matches_type(item, field.items_type.value)
+                for item in value
+            ):
+                return False
         if (
             field.max_length is not None
             and isinstance(value, str)

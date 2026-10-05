@@ -1,0 +1,72 @@
+{
+  "case_count": 1000,
+  "cases_per_scenario": 50,
+  "category_counts": {
+    "alternate_date_format": 50,
+    "csv_interests_array": 50,
+    "custom_boolean_values": 50,
+    "full_customer_clean": 50,
+    "full_customer_date_boolean": 50,
+    "full_customer_email_name": 50,
+    "full_customer_id_postal": 50,
+    "full_customer_income_phone": 50,
+    "full_record_key_conflict": 50,
+    "invalid_active_value": 50,
+    "invalid_birth_date": 50,
+    "invalid_customer_id": 50,
+    "invalid_income_value": 50,
+    "invalid_interests_input": 50,
+    "invalid_nested_address": 50,
+    "missing_nested_city": 50,
+    "nested_address_normalization": 50,
+    "optional_phone_to_null": 50,
+    "pipe_interests_array": 50,
+    "thousands_income_normalization": 50
+  },
+  "dataset_version": "2.0.0",
+  "difficulty_counts": {
+    "easy": 250,
+    "hard": 400,
+    "medium": 350
+  },
+  "expected_error_code_counts": {
+    "BOOLEAN_PARSE_FAILED": 50,
+    "DATE_PARSE_FAILED": 50,
+    "DECIMAL_PARSE_FAILED": 50,
+    "DUPLICATE_BUSINESS_KEY": 50,
+    "INTEGER_PARSE_FAILED": 50,
+    "PATH_NOT_FOUND": 50,
+    "PATH_REQUIRES_OBJECT": 100,
+    "REQUIRED_TARGET_FIELD_MISSING": 400,
+    "SPLIT_REQUIRES_TEXT": 50,
+    "TARGET_BUSINESS_KEY_CONFLICT": 25
+  },
+  "expected_record_counts": {
+    "accepted": 1575,
+    "rejected": 425,
+    "total": 2000
+  },
+  "expected_rule_counts": {
+    "concat": 1000,
+    "default_if_missing": 1000,
+    "empty_to_null": 1000,
+    "get_path": 2000,
+    "lowercase": 1000,
+    "parse_boolean": 1000,
+    "parse_date": 1000,
+    "parse_decimal": 1000,
+    "parse_integer": 1000,
+    "remove_characters": 1000,
+    "split": 1000,
+    "to_string": 1000,
+    "trim": 2000,
+    "uppercase": 1000
+  },
+  "generation_seed": 20261005,
+  "review_status": "pending_human_review",
+  "rule_list_version": "2.0",
+  "scenario_count": 20,
+  "schema_format_version": "1.0",
+  "suite": "full_record_json",
+  "usage": "evaluation_only"
+}

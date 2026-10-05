@@ -13,6 +13,8 @@ class SupportedDataType(str, Enum):
     BOOLEAN = "boolean"
     DATE = "date"
     DATETIME = "datetime"
+    ARRAY = "array"
+    OBJECT = "object"
 
 
 class AdditionalFieldsPolicy(str, Enum):
@@ -47,5 +49,5 @@ class ErrorCode(str, Enum):
 SCHEMA_FORMAT_VERSION = "1.0"
 CANONICALIZATION_VERSION = "1.0"
 HASH_ALGORITHM = "sha256"
-TRANSFORMATION_ENGINE_VERSION = "1.0"
+TRANSFORMATION_ENGINE_VERSION = "2.0"
 APPROVAL_POLICY_VERSION = "1.0"

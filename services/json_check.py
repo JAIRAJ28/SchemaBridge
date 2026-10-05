@@ -22,6 +22,40 @@ def reject_nonstandard_number(value: str) -> None:
     raise ValueError(f"Unsupported JSON number: {value}")
 
 
+def check_nested_value(
+    value: Any,
+    *,
+    path: str,
+    depth: int,
+) -> None:
+    settings = get_settings()
+    if depth > settings.max_json_depth:
+        raise ValueError(f"Nested JSON exceeds maximum depth at {path}.")
+    if isinstance(value, str):
+        if len(value) > settings.max_string_length:
+            raise ValueError(f"String value is too long at {path}.")
+        return
+    if isinstance(value, list):
+        if len(value) > settings.max_array_items:
+            raise ValueError(f"Array contains too many items at {path}.")
+        for index, item in enumerate(value):
+            check_nested_value(
+                item,
+                path=f"{path}[{index}]",
+                depth=depth + 1,
+            )
+        return
+    if isinstance(value, dict):
+        if len(value) > settings.max_record_fields:
+            raise ValueError(f"Object contains too many fields at {path}.")
+        for field_name, item in value.items():
+            check_nested_value(
+                item,
+                path=f"{path}.{field_name}",
+                depth=depth + 1,
+            )
+
+
 def parse_json_records(content: bytes) -> list[dict]:
     settings = get_settings()
     if len(content) > settings.max_upload_bytes:
@@ -58,18 +92,11 @@ def parse_json_records(content: bytes) -> list[dict]:
             raise ValueError(f"Record {index} exceeds the maximum record size.")
 
         for field_name, field_value in record.items():
-            if isinstance(field_value, (dict, list)):
-                raise ValueError(
-                    f"Nested value found at record {index}, field '{field_name}'."
-                )
-            if (
-                isinstance(field_value, str)
-                and len(field_value) > settings.max_string_length
-            ):
-                raise ValueError(
-                    f"String value is too long at record {index}, "
-                    f"field '{field_name}'."
-                )
+            check_nested_value(
+                field_value,
+                path=f"record {index}.{field_name}",
+                depth=1,
+            )
         records.append(record)
 
     return records

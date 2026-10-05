@@ -144,6 +144,46 @@ class ConcatRule(StrictContract):
     )
 
 
+class GetPathRule(StrictContract):
+    rule: Literal["get_path"] = "get_path"
+    path: list[StrictStr] = Field(min_length=1, max_length=10)
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: list[str]) -> list[str]:
+        if any(not part or part != part.strip() for part in value):
+            raise ValueError("Path parts cannot be empty or contain outer spaces.")
+        return value
+
+
+class LowercaseRule(StrictContract):
+    rule: Literal["lowercase"] = "lowercase"
+
+
+class UppercaseRule(StrictContract):
+    rule: Literal["uppercase"] = "uppercase"
+
+
+class RemoveCharactersRule(StrictContract):
+    rule: Literal["remove_characters"] = "remove_characters"
+    characters: StrictStr = Field(min_length=1, max_length=50)
+
+
+class ToStringRule(StrictContract):
+    rule: Literal["to_string"] = "to_string"
+
+
+class SplitRule(StrictContract):
+    rule: Literal["split"] = "split"
+    delimiter: StrictStr = Field(min_length=1, max_length=20)
+    trim_items: StrictBool = True
+    drop_empty: StrictBool = True
+
+
+class EmptyToNullRule(StrictContract):
+    rule: Literal["empty_to_null"] = "empty_to_null"
+
+
 RuleStep: TypeAlias = Annotated[
     CopyRule
     | TrimRule
@@ -153,6 +193,13 @@ RuleStep: TypeAlias = Annotated[
     | ParseBooleanRule
     | LookupRule
     | DefaultIfMissingRule
-    | ConcatRule,
+    | ConcatRule
+    | GetPathRule
+    | LowercaseRule
+    | UppercaseRule
+    | RemoveCharactersRule
+    | ToStringRule
+    | SplitRule
+    | EmptyToNullRule,
     Field(discriminator="rule"),
 ]

@@ -10,12 +10,12 @@ from contracts.transform_result import FieldProblem, RecordResult
 from services.rule_run import transform_record
 
 
-def value_has_correct_type(*, value: Any, field: FieldDefinition) -> bool:
-    if field.type == SupportedDataType.STRING:
+def value_matches_type(value: Any, data_type: SupportedDataType) -> bool:
+    if data_type == SupportedDataType.STRING:
         return isinstance(value, str)
-    if field.type == SupportedDataType.INTEGER:
+    if data_type == SupportedDataType.INTEGER:
         return isinstance(value, int) and not isinstance(value, bool)
-    if field.type == SupportedDataType.DECIMAL:
+    if data_type == SupportedDataType.DECIMAL:
         if isinstance(value, bool):
             return False
         if isinstance(value, Decimal):
@@ -25,11 +25,23 @@ def value_has_correct_type(*, value: Any, field: FieldDefinition) -> bool:
         if isinstance(value, float):
             return math.isfinite(value)
         return False
-    if field.type == SupportedDataType.BOOLEAN:
+    if data_type == SupportedDataType.BOOLEAN:
         return isinstance(value, bool)
-    if field.type in {SupportedDataType.DATE, SupportedDataType.DATETIME}:
+    if data_type in {SupportedDataType.DATE, SupportedDataType.DATETIME}:
         return isinstance(value, str)
+    if data_type == SupportedDataType.ARRAY:
+        return isinstance(value, list)
+    if data_type == SupportedDataType.OBJECT:
+        return isinstance(value, dict)
     return False
+
+
+def value_has_correct_type(*, value: Any, field: FieldDefinition) -> bool:
+    if not value_matches_type(value, field.type):
+        return False
+    if field.type == SupportedDataType.ARRAY and field.items_type is not None:
+        return all(value_matches_type(item, field.items_type) for item in value)
+    return True
 
 
 def check_date_value(*, value: str, field: FieldDefinition) -> bool:

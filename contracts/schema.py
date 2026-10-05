@@ -74,6 +74,8 @@ class FieldDefinition(BaseModel):
 
     allowed_values: list[JSONScalar] | None = None
 
+    items_type: SupportedDataType | None = None
+
     @field_validator("name")
     @classmethod
     def validate_field_name(cls, value: str) -> str:
@@ -120,6 +122,13 @@ class FieldDefinition(BaseModel):
             )
 
         if self.allowed_values is not None:
+            if self.type in {
+                SupportedDataType.ARRAY,
+                SupportedDataType.OBJECT,
+            }:
+                raise ValueError(
+                    "allowed_values is supported only for scalar fields."
+                )
             if not self.allowed_values:
                 raise ValueError(
                     "allowed_values cannot be empty when provided."
@@ -153,6 +162,17 @@ class FieldDefinition(BaseModel):
                 raise ValueError(
                     "allowed_values cannot contain duplicates."
                 )
+
+        if self.type == SupportedDataType.ARRAY:
+            if self.items_type is None:
+                raise ValueError("Array fields must define items_type.")
+            if self.items_type in {
+                SupportedDataType.ARRAY,
+                SupportedDataType.OBJECT,
+            }:
+                raise ValueError("Nested collection items are not supported.")
+        elif self.items_type is not None:
+            raise ValueError("items_type is supported only for array fields.")
 
         return self
 

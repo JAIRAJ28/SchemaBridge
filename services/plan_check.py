@@ -12,6 +12,11 @@ RULE_OUTPUT_TYPES = {
     "parse_date": SupportedDataType.DATE,
     "parse_boolean": SupportedDataType.BOOLEAN,
     "concat": SupportedDataType.STRING,
+    "lowercase": SupportedDataType.STRING,
+    "uppercase": SupportedDataType.STRING,
+    "remove_characters": SupportedDataType.STRING,
+    "to_string": SupportedDataType.STRING,
+    "split": SupportedDataType.ARRAY,
 }
 
 

@@ -8,13 +8,20 @@ from contracts.rule import (
     ConcatRule,
     CopyRule,
     DefaultIfMissingRule,
+    EmptyToNullRule,
+    GetPathRule,
+    LowercaseRule,
     LookupRule,
     ParseBooleanRule,
     ParseDateRule,
     ParseDecimalRule,
     ParseIntegerRule,
     RuleStep,
+    RemoveCharactersRule,
+    SplitRule,
+    ToStringRule,
     TrimRule,
+    UppercaseRule,
 )
 from contracts.transform_result import FieldProblem, RecordResult
 
@@ -227,6 +234,111 @@ def run_concat(rule: ConcatRule, values: list[Any]) -> str:
     return rule.separator.join(scalar_to_text(value) for value in values)
 
 
+def run_get_path(rule: GetPathRule, values: list[Any]) -> Any:
+    value = require_one_value(values, rule_name=rule.rule)
+    if isinstance(value, MissingValue):
+        raise RuleRunError(
+            code="SOURCE_VALUE_MISSING",
+            message="The source value is missing.",
+        )
+    current = value
+    for part in rule.path:
+        if not isinstance(current, dict):
+            raise RuleRunError(
+                code="PATH_REQUIRES_OBJECT",
+                message=f"Cannot read path part {part!r} from a non-object value.",
+                value=current,
+            )
+        if part not in current:
+            raise RuleRunError(
+                code="PATH_NOT_FOUND",
+                message=f"Nested path part {part!r} was not found.",
+                value=current,
+            )
+        current = current[part]
+    return current
+
+
+def run_lowercase(rule: LowercaseRule, values: list[Any]) -> str:
+    value = require_one_value(values, rule_name=rule.rule)
+    if not isinstance(value, str):
+        raise RuleRunError(
+            code="LOWERCASE_REQUIRES_TEXT",
+            message="The lowercase rule requires a text value.",
+            value=value,
+        )
+    return value.lower()
+
+
+def run_uppercase(rule: UppercaseRule, values: list[Any]) -> str:
+    value = require_one_value(values, rule_name=rule.rule)
+    if not isinstance(value, str):
+        raise RuleRunError(
+            code="UPPERCASE_REQUIRES_TEXT",
+            message="The uppercase rule requires a text value.",
+            value=value,
+        )
+    return value.upper()
+
+
+def run_remove_characters(
+    rule: RemoveCharactersRule,
+    values: list[Any],
+) -> str:
+    value = require_one_value(values, rule_name=rule.rule)
+    if not isinstance(value, str):
+        raise RuleRunError(
+            code="REMOVE_CHARACTERS_REQUIRES_TEXT",
+            message="The remove_characters rule requires a text value.",
+            value=value,
+        )
+    return value.translate(str.maketrans("", "", rule.characters))
+
+
+def run_to_string(rule: ToStringRule, values: list[Any]) -> str:
+    value = require_one_value(values, rule_name=rule.rule)
+    if isinstance(value, MissingValue):
+        raise RuleRunError(
+            code="SOURCE_VALUE_MISSING",
+            message="The source value is missing.",
+        )
+    if value is None or isinstance(value, (dict, list)):
+        raise RuleRunError(
+            code="TO_STRING_REQUIRES_SCALAR",
+            message="The to_string rule requires a non-null scalar value.",
+            value=value,
+        )
+    return scalar_to_text(value)
+
+
+def run_split(rule: SplitRule, values: list[Any]) -> list[str]:
+    value = require_one_value(values, rule_name=rule.rule)
+    if not isinstance(value, str):
+        raise RuleRunError(
+            code="SPLIT_REQUIRES_TEXT",
+            message="The split rule requires a text value.",
+            value=value,
+        )
+    items = value.split(rule.delimiter)
+    if rule.trim_items:
+        items = [item.strip() for item in items]
+    if rule.drop_empty:
+        items = [item for item in items if item]
+    return items
+
+
+def run_empty_to_null(rule: EmptyToNullRule, values: list[Any]) -> Any:
+    value = require_one_value(values, rule_name=rule.rule)
+    if isinstance(value, MissingValue):
+        raise RuleRunError(
+            code="SOURCE_VALUE_MISSING",
+            message="The source value is missing.",
+        )
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
 def run_rule(*, rule: RuleStep, values: list[Any]) -> Any:
     try:
         if isinstance(rule, CopyRule):
@@ -247,6 +359,20 @@ def run_rule(*, rule: RuleStep, values: list[Any]) -> Any:
             return run_default_if_missing(rule, values)
         if isinstance(rule, ConcatRule):
             return run_concat(rule, values)
+        if isinstance(rule, GetPathRule):
+            return run_get_path(rule, values)
+        if isinstance(rule, LowercaseRule):
+            return run_lowercase(rule, values)
+        if isinstance(rule, UppercaseRule):
+            return run_uppercase(rule, values)
+        if isinstance(rule, RemoveCharactersRule):
+            return run_remove_characters(rule, values)
+        if isinstance(rule, ToStringRule):
+            return run_to_string(rule, values)
+        if isinstance(rule, SplitRule):
+            return run_split(rule, values)
+        if isinstance(rule, EmptyToNullRule):
+            return run_empty_to_null(rule, values)
     except RuleRunError as error:
         if error.rule is None:
             error.rule = rule.rule

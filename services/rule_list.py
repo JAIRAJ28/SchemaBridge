@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-RULE_LIST_VERSION = "1.0"
+RULE_LIST_VERSION = "2.0"
 @dataclass(frozen=True)
 class RuleInfo:
     name: str
@@ -64,6 +64,48 @@ RULES: dict[str, RuleInfo] = {
         purpose="Join multiple source values into one text value.",
         minimum_inputs=1,
         maximum_inputs=20,
+    ),
+    "get_path": RuleInfo(
+        name="get_path",
+        purpose="Read a value from a documented path inside a JSON object.",
+        minimum_inputs=1,
+        maximum_inputs=1,
+    ),
+    "lowercase": RuleInfo(
+        name="lowercase",
+        purpose="Convert text to lowercase.",
+        minimum_inputs=1,
+        maximum_inputs=1,
+    ),
+    "uppercase": RuleInfo(
+        name="uppercase",
+        purpose="Convert text to uppercase.",
+        minimum_inputs=1,
+        maximum_inputs=1,
+    ),
+    "remove_characters": RuleInfo(
+        name="remove_characters",
+        purpose="Remove a configured set of characters from text.",
+        minimum_inputs=1,
+        maximum_inputs=1,
+    ),
+    "to_string": RuleInfo(
+        name="to_string",
+        purpose="Convert a non-null scalar value to text.",
+        minimum_inputs=1,
+        maximum_inputs=1,
+    ),
+    "split": RuleInfo(
+        name="split",
+        purpose="Split text into an array using a configured delimiter.",
+        minimum_inputs=1,
+        maximum_inputs=1,
+    ),
+    "empty_to_null": RuleInfo(
+        name="empty_to_null",
+        purpose="Convert empty or whitespace-only text to null.",
+        minimum_inputs=1,
+        maximum_inputs=1,
     ),
 }
 

@@ -1,0 +1,1 @@
+"""SchemaBridge offline evaluation assets."""
