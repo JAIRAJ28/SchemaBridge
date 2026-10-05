@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: schemabridge-api
+    runtime: docker
+    plan: free
+    region: ohio
+    dockerfilePath: ./deployment/api.Dockerfile
+    dockerContext: .
+    dockerCommand: /bin/sh -c 'alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000} --no-access-log'
+    healthCheckPath: /health
+    envVars:
+      - key: SCHEMABRIDGE_APP_ENVIRONMENT
+        value: production
+      - key: SCHEMABRIDGE_DATABASE_URL
+        sync: false
+      - key: SCHEMABRIDGE_JWT_SECRET
+        generateValue: true
+      - key: SCHEMABRIDGE_FRONTEND_ORIGIN
+        sync: false
+      - key: SCHEMABRIDGE_AI_API_KEY
+        sync: false
+      - key: SCHEMABRIDGE_AI_BASE_URL
+        value: https://router.huggingface.co/v1
+      - key: SCHEMABRIDGE_AI_MODEL
+        value: Qwen/Qwen3.5-9B:together
+      - key: SCHEMABRIDGE_AI_STRUCTURED_METHOD
+        value: json_mode
+      - key: SCHEMABRIDGE_AI_MAX_RETRIES
+        value: "0"
+      - key: SCHEMABRIDGE_AI_TIMEOUT_SECONDS
+        value: "60"
+      - key: SCHEMABRIDGE_DATABASE_POOL_SIZE
+        value: "2"
+      - key: SCHEMABRIDGE_DATABASE_MAX_OVERFLOW
+        value: "2"
+      - key: SCHEMABRIDGE_DATABASE_CONNECT_TIMEOUT_SECONDS
+        value: "30"
+      - key: SCHEMABRIDGE_STORAGE_ROOT
+        value: /tmp/schemabridge/uploads

@@ -418,7 +418,25 @@ Copy the connection URL privately. Change only the starting scheme from
 `postgresql://` to `postgresql+psycopg://`; preserve the hostname, credentials,
 and TLS parameters such as `sslmode=require`.
 
+For a local API using Neon, set `SCHEMABRIDGE_DATABASE_URL` in the ignored
+`.env`. To make Docker use the same database, set
+`SCHEMABRIDGE_DOCKER_DATABASE_URL` to that same URL and run
+`docker compose up -d --no-deps api`. Leave the Docker override blank to use
+the local PostgreSQL service. Existing local database data is not copied to
+Neon; create a new application account after switching to a fresh database.
+
 ### 3. Deploy the API on Render
+
+The repository includes `render.yaml` for a Free API service in Ohio. For
+automatic setup, push the deployment files, then choose **New > Blueprint**
+in Render and connect the repository. Enter the database URL and Hugging Face
+token from your private `.env`, plus the frontend origin. The Blueprint
+generates a JWT secret and configures migrations, the port, and health checks.
+If the frontend is not deployed yet, use `http://localhost:3000` temporarily
+and replace it with the stable Vercel URL after deployment. These secret values
+are entered in Render, never in the YAML file.
+
+Alternatively, configure a service manually:
 
 Create a Web Service from the GitHub repository:
 
@@ -471,6 +489,7 @@ complete migration flow.
 Import the same repository on the Hobby plan. Choose Next.js, set Root
 Directory to `frontend`, and use Node.js 22.x. Use `npm ci` for installation
 and `npm run build -- --webpack` as the build command.
+`frontend/vercel.json` already supplies the framework and build commands.
 
 Add the following environment variable for the Production deployment:
 
