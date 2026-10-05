@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "../lib/api";
 import {
@@ -78,6 +78,7 @@ export default function Home() {
   const [sourceText, setSourceText] = useState("");
   const [targetText, setTargetText] = useState("");
   const [datasetText, setDatasetText] = useState("");
+  const [mappingText, setMappingText] = useState("[]");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [comment, setComment] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
@@ -88,6 +89,10 @@ export default function Home() {
   const [message, setMessage] = useState("Upload the three JSON files to begin.");
 
   const proposal = flow.agent?.proposal as Proposal | null;
+  useEffect(() => {
+    const mappings = flow.plan?.plan_data?.mappings ?? proposal?.mappings;
+    if (Array.isArray(mappings)) setMappingText(JSON.stringify(mappings, null, 2));
+  }, [flow.plan?.plan_data, proposal]);
   const accepted = useMemo(() => flow.records.filter((item) => item.status === "accepted"), [flow.records]);
   const rejected = useMemo(() => flow.records.filter((item) => item.status === "rejected"), [flow.records]);
 
@@ -198,7 +203,7 @@ export default function Home() {
   async function startAgent() {
     if (!flow.project || !flow.sourceSchema || !flow.targetSchema || !flow.dataset) return;
     setBusy(true);
-    setMessage("Qwen is inspecting the schemas, profile, sample, and supported rules…");
+    setMessage("The AI planner is inspecting the schemas, profile, sample, and supported rules…");
     try {
       const agent = await api<AgentRun>(`/projects/${flow.project.id}/agent-runs`, flow.accessToken, {
         method: "POST",
@@ -254,12 +259,40 @@ export default function Home() {
     }
   }
 
+  async function saveReviewedPlan() {
+    if (!flow.project || !flow.sourceSchema || !flow.targetSchema || !flow.dataset) return;
+    setBusy(true);
+    try {
+      const mappings = JSON.parse(mappingText);
+      if (!Array.isArray(mappings) || mappings.length === 0) {
+        throw new Error("Enter a non-empty JSON array of field mappings.");
+      }
+      const plan = await api<Plan>(`/projects/${flow.project.id}/plans`, flow.accessToken, {
+        method: "POST",
+        body: JSON.stringify({
+          source_schema_version_id: flow.sourceSchema.id,
+          target_schema_version_id: flow.targetSchema.id,
+          dataset_version_id: flow.dataset.id,
+          name: "Reviewed migration plan",
+          mappings,
+        }),
+      });
+      dispatch(updateWorkflow({ plan, dryRun: null, records: [], approval: null, migrationRun: null, executionKey: null }));
+      setMessage(`Plan version ${plan.version} saved. Run the dry run and review every result before approval.`);
+    } catch (error) {
+      fail(error, "Unable to save the mapping plan.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createDryRun() {
-    if (!flow.project || !flow.agent?.plan_id) return;
+    const planId = flow.plan?.id ?? flow.agent?.plan_id;
+    if (!flow.project || !planId) return;
     setBusy(true);
     setMessage("Running every source record with deterministic rules…");
     try {
-      const plan = await api<Plan>(`/projects/${flow.project.id}/plans/${flow.agent.plan_id}`, flow.accessToken);
+      const plan = await api<Plan>(`/projects/${flow.project.id}/plans/${planId}`, flow.accessToken);
       const dryRun = await api<DryRun>(`/projects/${flow.project.id}/plans/${plan.id}/dry-runs`, flow.accessToken, { method: "POST" });
       const records = await loadAllRecords(flow.project.id, plan.id, dryRun.id);
       const history = await loadHistory(flow.project.id);
@@ -283,7 +316,7 @@ export default function Home() {
       );
       const history = await loadHistory(flow.project.id);
       dispatch(updateWorkflow({ approval, history }));
-      setMessage(decision === "approved" ? "Exact dry run approved. It is now eligible for execution." : "Proposal rejected. Start a new agent proposal to make changes.");
+      setMessage(decision === "approved" ? "Exact dry run approved. It is now eligible for execution." : "Proposal rejected. Revise the mapping or generate another AI proposal.");
     } catch (error) {
       fail(error, "Unable to save the decision.");
     } finally {
@@ -346,6 +379,7 @@ export default function Home() {
     setSourceText("");
     setTargetText("");
     setDatasetText("");
+    setMappingText("[]");
     setAnswers({});
     setComment("");
     setMessage("Upload the three JSON files to begin.");
@@ -353,6 +387,7 @@ export default function Home() {
 
   function logout() {
     dispatch(resetWorkflow());
+    setMappingText("[]");
     setMessage("Signed out.");
   }
 
@@ -422,7 +457,7 @@ export default function Home() {
         <section className="space-y-5">
           <div className={panel}>
             <h2 className="text-xl font-bold">2. Generate the mapping plan</h2>
-            <p className="mt-1 text-sm text-muted">Project <strong>{flow.project.name}</strong> contains {flow.dataset?.record_count} source records. Qwen can inspect only these saved inputs and the supported rule list.</p>
+            <p className="mt-1 text-sm text-muted">Project <strong>{flow.project.name}</strong> contains {flow.dataset?.record_count} source records. The AI planner can inspect only these saved inputs and the supported rule list.</p>
             {!flow.agent && <button className={`${primary} mt-5`} disabled={busy} onClick={startAgent}>Start AI mapping</button>}
             {flow.agent && <div className="mt-4 flex flex-wrap items-center gap-3"><span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-brand">{flow.agent.status}</span><button className={secondary} disabled={busy} onClick={startAgent}>Generate a new proposal</button></div>}
           </div>
@@ -434,6 +469,13 @@ export default function Home() {
             </div>
           )}
 
+          <div className={panel}>
+            <h3 className="font-bold">Review or edit field mappings</h3>
+            <p className="mt-2 text-sm text-muted">Edit the AI mappings, or enter them here if the AI fails. Saving creates a new plan version; it does not approve or execute anything.</p>
+            <textarea className={`${input} mt-4 font-mono`} rows={12} value={mappingText} onChange={(event) => setMappingText(event.target.value)} aria-label="Field mappings JSON" />
+            <button className={`${secondary} mt-3`} disabled={busy || flow.questions.some((question) => question.blocking === true && !question.answer)} onClick={saveReviewedPlan}>Save reviewed plan</button>
+          </div>
+
           {flow.questions.some((question) => !question.answer) && (
             <div className={panel}>
               <h3 className="font-bold">Clarification required</h3>
@@ -443,8 +485,8 @@ export default function Home() {
           )}
 
           {flow.agent?.status === "needs_clarification" && flow.questions.length > 0 && flow.questions.every((question) => question.answer) && <button className={primary} disabled={busy} onClick={resumeAgent}>Resume saved agent run</button>}
-          {flow.agent?.status === "ready_for_review" && flow.agent.plan_id && <button className={primary} disabled={busy} onClick={createDryRun}>Run all source records</button>}
-          {flow.agent && ["failed", "invalid"].includes(flow.agent.status) && <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">The proposal could not become a valid plan. Generate a new proposal after checking the schemas and answers.</p>}
+          {(flow.plan || (flow.agent?.status === "ready_for_review" && flow.agent.plan_id)) && <button className={primary} disabled={busy} onClick={createDryRun}>Run all source records</button>}
+          {flow.agent && ["failed", "invalid"].includes(flow.agent.status) && <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">The AI proposal could not become a valid plan. Correct the mappings above or generate another proposal.</p>}
         </section>
       )}
 
@@ -455,7 +497,7 @@ export default function Home() {
           </div>
           <div className="grid gap-5 lg:grid-cols-2">
             <article className={panel}><h3 className="font-bold">Plan version {flow.plan.version}: {flow.plan.name}</h3><JsonView value={flow.plan.plan_data} /></article>
-            <article className={panel}><h3 className="font-bold">AI risks and explanation</h3><JsonView value={{ risks: proposal?.risks, explanation: proposal?.explanation }} /></article>
+            {flow.agent?.plan_id === flow.plan.id && proposal && <article className={panel}><h3 className="font-bold">AI risks and explanation</h3><JsonView value={{ risks: proposal.risks, explanation: proposal.explanation }} /></article>}
           </div>
           <article className={panel}><h3 className="font-bold text-emerald-800">Accepted records ({accepted.length})</h3><div className="mt-3 grid gap-3 md:grid-cols-2">{accepted.map((record) => <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3" key={record.id}><span className="text-xs font-semibold">Row {record.row_ordinal}</span><JsonView value={record.transformed_record} /></div>)}</div></article>
           <article className={`${panel} border-red-200 bg-red-50`}><h3 className="font-bold text-red-800">Rejected records ({rejected.length})</h3>{rejected.length === 0 ? <p className="mt-2 text-sm text-muted">No rejected records.</p> : <div className="mt-3 grid gap-3 md:grid-cols-2">{rejected.map((record) => <div className="rounded-xl border border-red-200 bg-white p-3" key={record.id}><span className="text-xs font-semibold">Row {record.row_ordinal}</span><JsonView value={{ transformed: record.transformed_record, errors: record.field_errors }} /></div>)}</div>}</article>
@@ -466,7 +508,7 @@ export default function Home() {
             {!flow.approval && <div className="mt-4 flex gap-3"><button className={primary} disabled={busy} onClick={() => decide("approved")}>Approve exact dry run</button><button className={secondary} disabled={busy} onClick={() => decide("rejected")}>Reject</button></div>}
             {flow.approval && <p className="mt-4 text-sm font-semibold">Decision: <span className={flow.approval.decision === "approved" ? "text-brand" : "text-red-700"}>{flow.approval.decision}</span></p>}
             {flow.approval?.decision === "approved" && <button className={`${primary} mt-4`} disabled={busy} onClick={execute}>Execute accepted records</button>}
-            {flow.approval?.decision === "rejected" && <button className={`${primary} mt-4`} disabled={busy} onClick={() => { dispatch(updateWorkflow({ step: 2, agent: null, questions: [], plan: null, dryRun: null, records: [], approval: null })); setMessage("Start a new proposal. The rejected decision remains in history."); }}>Create a revised proposal</button>}
+          {flow.approval?.decision === "rejected" && <button className={`${primary} mt-4`} disabled={busy} onClick={() => { dispatch(updateWorkflow({ step: 2, agent: null, questions: [], plan: null, dryRun: null, records: [], approval: null })); setMessage("Revise the mappings or start a new AI proposal. The rejection remains in history."); }}>Create a revised proposal</button>}
           </article>
         </section>
       )}

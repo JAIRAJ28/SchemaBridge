@@ -62,6 +62,7 @@ class Settings(BaseSettings):
         gt=0,
     )
     storage_root: str = "data/uploads"
+    otlp_endpoint: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -99,7 +100,7 @@ class Settings(BaseSettings):
     jwt_audience: str = "schemabridge-web"
 
     ai_model: str = Field(
-        default="Qwen/Qwen3-4B-Instruct-2507:fastest",
+        default="Qwen/Qwen3.5-9B:together",
         min_length=1,
         max_length=100,
     )
@@ -138,7 +139,7 @@ class Settings(BaseSettings):
         "json_schema",
         "function_calling",
         "json_mode",
-    ] = "json_schema"
+    ] = "json_mode"
 
     ai_max_tool_calls: int = Field(
         default=12,

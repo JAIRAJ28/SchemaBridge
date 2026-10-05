@@ -1,0 +1,13 @@
+[
+  {"source_fields": ["customer_id"], "target_field": "id", "rules": [{"rule": "parse_integer"}]},
+  {"source_fields": ["first_name", "last_name"], "target_field": "full_name", "rules": [{"rule": "concat", "separator": " "}]},
+  {"source_fields": ["email"], "target_field": "email_address", "rules": [{"rule": "trim"}, {"rule": "lowercase"}]},
+  {"source_fields": ["date_of_birth"], "target_field": "birth_date", "rules": [{"rule": "parse_date", "input_format": "%d/%m/%Y", "output_format": "%Y-%m-%d"}]},
+  {"source_fields": ["is_active"], "target_field": "active", "rules": [{"rule": "parse_boolean", "true_values": ["YES"], "false_values": ["NO"], "case_sensitive": false}]},
+  {"source_fields": ["annual_income"], "target_field": "annual_income", "rules": [{"rule": "remove_characters", "characters": ","}, {"rule": "parse_decimal"}]},
+  {"source_fields": ["address"], "target_field": "city", "rules": [{"rule": "get_path", "path": ["city"]}, {"rule": "trim"}]},
+  {"source_fields": ["address"], "target_field": "postal_code", "rules": [{"rule": "get_path", "path": ["postal_code"]}, {"rule": "to_string"}]},
+  {"source_fields": ["interests"], "target_field": "interests", "rules": [{"rule": "split", "delimiter": ",", "trim_items": true, "drop_empty": true}]},
+  {"source_fields": ["phone"], "target_field": "phone_number", "rules": [{"rule": "empty_to_null"}]},
+  {"source_fields": ["country_code"], "target_field": "country", "rules": [{"rule": "trim"}, {"rule": "uppercase"}]}
+]

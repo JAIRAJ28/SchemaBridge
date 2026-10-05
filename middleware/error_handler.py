@@ -149,8 +149,9 @@ async def unexpected_exception_handler(
     request: Request,
     exception: Exception,
 ) -> JSONResponse:
-    logger.exception(
-        "Unhandled request exception",
+    logger.error(
+        "Unhandled request exception type: %s",
+        type(exception).__name__,
         extra={
             "request_id": get_request_id(request),
             "method": request.method,

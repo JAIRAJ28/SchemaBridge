@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import TypedDict
 
@@ -6,6 +7,7 @@ from langchain_core.runnables import Runnable
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
+from pydantic import ValidationError
 
 from config.settings import get_settings
 from contracts.agent_result import AgentPlanProposal
@@ -49,6 +51,9 @@ Every source_fields entry must be a top-level field name in the source schema.
 For a nested value, use the top-level object field with the get_path rule:
 source_fields ["address"], rules [{"rule":"get_path","path":["city"]}].
 Do not put dotted paths such as "address.city" in source_fields.
+Use needs_clarification only when the questions list contains a blocking question.
+Invalid sample values are quarantined by the deterministic dry run. They do
+not require a clarification if a supported mapping for valid values is clear.
 """.strip()
 
 
@@ -69,6 +74,59 @@ def _proposal(value: dict) -> AgentPlanProposal:
 
 def _proposal_dict(value: AgentPlanProposal | dict) -> dict:
     return AgentPlanProposal.model_validate(value).model_dump(mode="json")
+
+
+async def request_proposal(
+    model: Runnable,
+    messages: list,
+    *,
+    timeout_seconds: int,
+) -> tuple[AgentPlanProposal, int]:
+    """Give one malformed model response a bounded correction attempt."""
+    for attempt in (1, 2):
+        try:
+            response = await asyncio.wait_for(
+                model.ainvoke(messages), timeout=timeout_seconds
+            )
+            if isinstance(response, dict) and "parsed" in response:
+                parsed = response["parsed"]
+                problem = response.get("parsing_error")
+            else:
+                parsed = response
+                problem = None
+
+            if problem is None:
+                return AgentPlanProposal.model_validate(parsed), attempt
+        except ValidationError as error:
+            problem = error
+
+        if isinstance(problem, ValidationError):
+            details = "; ".join(
+                f"{'.'.join(map(str, item['loc']))}: {item['msg']}"
+                for item in problem.errors(
+                    include_input=False,
+                    include_url=False,
+                    include_context=False,
+                )[:5]
+            )
+        else:
+            details = "The response did not match the proposal JSON contract."
+        if attempt == 2:
+            raise ValueError(
+                f"AI proposal is invalid after one correction: {details}"
+            )
+        messages = [
+            *messages,
+            HumanMessage(
+                content=(
+                    f"Correct these proposal errors: {details} "
+                    "Use only top-level source field names. For nested values, "
+                    "use the get_path rule. Return the complete proposal."
+                )
+            ),
+        ]
+
+    raise AssertionError("The proposal retry loop ended unexpectedly.")
 
 
 def _prompt_rules(value: dict) -> dict:
@@ -107,15 +165,18 @@ def build_agent_graph(
         *,
         purpose: str,
         revision: int,
+        attempts: int,
     ) -> dict:
         metadata = dict(state.get("transcript_metadata", {}))
         calls = list(metadata.get("model_calls", []))
-        calls.append(
-            {
-                "purpose": purpose,
-                "revision": revision,
-            }
-        )
+        for attempt in range(1, attempts + 1):
+            calls.append(
+                {
+                    "purpose": purpose,
+                    "revision": revision,
+                    "attempt": attempt,
+                }
+            )
         metadata["model_calls"] = calls
         metadata["model_call_count"] = len(calls)
         return metadata
@@ -170,14 +231,16 @@ def build_agent_graph(
             "sample_records": state["sample_records"],
             "supported_rules": _prompt_rules(state["supported_rules"]),
         }, settings.ai_structured_method)
-        result = await selected_model.ainvoke(
+        result, attempts = await request_proposal(
+            selected_model,
             [
                 SystemMessage(content=SYSTEM_PROMPT),
                 HumanMessage(
                     content="Prepare a migration plan from this authorized context:\n\n"
                     + json.dumps(context, ensure_ascii=False, default=str)
                 ),
-            ]
+            ],
+            timeout_seconds=settings.ai_timeout_seconds,
         )
         proposal = _proposal_dict(result)
         return {
@@ -187,6 +250,7 @@ def build_agent_graph(
                 state,
                 purpose="initial_proposal",
                 revision=1,
+                attempts=attempts,
             ),
             "status": proposal["status"],
         }
@@ -227,7 +291,8 @@ def build_agent_graph(
             "previous_proposal": state["proposal"],
             "validation_problems": state["validation"]["problems"],
         }, settings.ai_structured_method)
-        result = await selected_model.ainvoke(
+        result, attempts = await request_proposal(
+            selected_model,
             [
                 SystemMessage(content=SYSTEM_PROMPT),
                 HumanMessage(
@@ -235,7 +300,8 @@ def build_agent_graph(
                     "problems using only supported fields and rules:\n\n"
                     + json.dumps(context, ensure_ascii=False, default=str)
                 ),
-            ]
+            ],
+            timeout_seconds=settings.ai_timeout_seconds,
         )
         proposal = _proposal_dict(result)
         return {
@@ -245,6 +311,7 @@ def build_agent_graph(
                 state,
                 purpose="validation_revision",
                 revision=state["revision_count"] + 1,
+                attempts=attempts,
             ),
             "status": proposal["status"],
         }
@@ -286,7 +353,8 @@ def build_agent_graph(
             "previous_proposal": state["proposal"],
             "user_answers": state["answers"],
         }, settings.ai_structured_method)
-        result = await selected_model.ainvoke(
+        result, attempts = await request_proposal(
+            selected_model,
             [
                 SystemMessage(content=SYSTEM_PROMPT),
                 HumanMessage(
@@ -294,7 +362,8 @@ def build_agent_graph(
                     "Do not invent information beyond those answers:\n\n"
                     + json.dumps(context, ensure_ascii=False, default=str)
                 ),
-            ]
+            ],
+            timeout_seconds=settings.ai_timeout_seconds,
         )
         proposal = _proposal_dict(result)
         return {
@@ -304,6 +373,7 @@ def build_agent_graph(
                 state,
                 purpose="clarification_revision",
                 revision=state["revision_count"] + 1,
+                attempts=attempts,
             ),
             "status": proposal["status"],
         }

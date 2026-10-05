@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from statistics import mean
 from typing import Any
@@ -44,10 +44,27 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
     record_fn = sum(row["records"]["accepted_false_negative"] for row in rows)
     record_precision = safe_divide(record_tp, record_tp + record_fp)
     record_recall = safe_divide(record_tp, record_tp + record_fn)
+    record_tn = sum(row["records"]["accepted_true_negative"] for row in rows)
+    rejected_precision = safe_divide(record_tn, record_tn + record_fn)
+    rejected_recall = safe_divide(record_tn, record_tn + record_fp)
+    clarification_tp = sum(
+        row["clarification"]["expected"] and row["clarification"]["predicted"]
+        for row in rows
+    )
+    clarification_predicted = sum(row["clarification"]["predicted"] for row in rows)
+    clarification_expected = sum(row["clarification"]["expected"] for row in rows)
+    clarification_precision = safe_divide(clarification_tp, clarification_predicted)
+    clarification_recall = safe_divide(clarification_tp, clarification_expected)
     latencies = [
         float(row["latency_ms"])
         for row in rows
         if isinstance(row.get("latency_ms"), (int, float))
+    ]
+    successful_latencies = [
+        float(row["latency_ms"])
+        for row in rows
+        if row["prediction_status"] == "success"
+        and isinstance(row.get("latency_ms"), (int, float))
     ]
     dry_runs = sum(row["records"]["dry_run_evaluated"] for row in rows)
     expected_dry_runs = sum(row["records"]["dry_run_expected"] for row in rows)
@@ -59,6 +76,9 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "successful_case_count": successful,
         "failed_case_count": case_count - successful,
         "timeout_count": timeouts,
+        "prediction_status_counts": dict(sorted(Counter(
+            row["prediction_status"] for row in rows
+        ).items())),
         "success_rate": safe_divide(successful, case_count),
         "mapping": {
             "precision": mapping_precision,
@@ -81,7 +101,16 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "clarification_accuracy": safe_divide(
             sum(row["clarification"]["correct"] for row in rows), case_count
         ),
+        "clarification": {
+            "expected_positive_cases": clarification_expected,
+            "predicted_positive_cases": clarification_predicted,
+            "precision": clarification_precision,
+            "recall": clarification_recall,
+            "f1": f1_score(clarification_precision, clarification_recall),
+        },
         "risk": {
+            "expected_items": risk_expected,
+            "predicted_items": risk_predicted,
             "precision": risk_precision,
             "recall": risk_recall,
             "f1": f1_score(risk_precision, risk_recall),
@@ -103,11 +132,27 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 sum(row["records"]["counts_match"] for row in rows), dry_runs
             ),
         },
+        "record_rejection": {
+            "expected_rejected_records": record_tn + record_fp,
+            "precision": rejected_precision,
+            "recall": rejected_recall,
+            "f1": f1_score(rejected_precision, rejected_recall),
+        },
         "latency_ms": {
+            "sample_count": len(latencies),
             "mean": mean(latencies) if latencies else None,
             "p50": percentile(latencies, 0.50),
+            "p90": percentile(latencies, 0.90),
             "p95": percentile(latencies, 0.95),
             "p99": percentile(latencies, 0.99),
+        },
+        "successful_latency_ms": {
+            "sample_count": len(successful_latencies),
+            "mean": mean(successful_latencies) if successful_latencies else None,
+            "p50": percentile(successful_latencies, 0.50),
+            "p90": percentile(successful_latencies, 0.90),
+            "p95": percentile(successful_latencies, 0.95),
+            "p99": percentile(successful_latencies, 0.99),
         },
     }
 

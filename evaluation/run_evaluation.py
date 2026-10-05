@@ -18,7 +18,8 @@ from contracts.plan import PlanCreate
 from contracts.schema import SchemaDefinition
 from evaluation.calculate_metrics import build_summary
 from evaluation.compare_results import compare_cases, read_jsonl, write_jsonl
-from services.agent_flow import SYSTEM_PROMPT
+from evaluation.review_cases import load_reviewed_cases
+from services.agent_flow import SYSTEM_PROMPT, request_proposal
 from services.ai_model import get_proposal_model
 from services.dataset_check import (
     RecordToCheck,
@@ -31,17 +32,12 @@ from services.target_check import transform_and_check_record
 
 
 ROOT = Path(__file__).resolve().parent
-DATASETS = {
-    "original": ROOT / "gold_cases.jsonl",
-    "full": ROOT / "gold_full_record_cases.jsonl",
-}
-
-
 def load_cases(dataset: str) -> list[dict[str, Any]]:
-    names = ("original", "full") if dataset == "all" else (dataset,)
-    cases: list[dict[str, Any]] = []
-    for name in names:
-        cases.extend(read_jsonl(DATASETS[name]))
+    cases = load_reviewed_cases()
+    if dataset == "original":
+        cases = [case for case in cases if case.get("suite", "original") == "original"]
+    elif dataset == "full":
+        cases = [case for case in cases if case.get("suite") == "full_record_json"]
     case_ids = [case["case_id"] for case in cases]
     if len(case_ids) != len(set(case_ids)):
         raise ValueError("Selected datasets contain duplicate case IDs.")
@@ -219,7 +215,8 @@ async def predict_with_ai(
     started = perf_counter()
     try:
         async with semaphore:
-            value = await asyncio.wait_for(model.ainvoke(
+            value, attempts = await request_proposal(
+                model,
                 [
                     SystemMessage(content=SYSTEM_PROMPT),
                     HumanMessage(
@@ -230,8 +227,9 @@ async def predict_with_ai(
                             + json.dumps(context, ensure_ascii=False, default=str)
                         )
                     ),
-                ]
-            ), timeout=request_timeout_seconds)
+                ],
+                timeout_seconds=request_timeout_seconds,
+            )
         proposal = normalize_proposal(value)
         return {
             "case_id": case["case_id"],
@@ -239,6 +237,7 @@ async def predict_with_ai(
             "mode": "ai",
             "model": model_name,
             "latency_ms": round((perf_counter() - started) * 1000, 3),
+            "model_attempts": attempts,
             "proposal": proposal,
             "execution": execute_proposal(case, proposal),
             "error": None,
@@ -265,7 +264,7 @@ def predict_from_gold(case: dict[str, Any]) -> dict[str, Any]:
         "status": "success",
         "mode": "gold",
         "model": "gold-label-pipeline-check",
-        "latency_ms": 0.0,
+        "latency_ms": None,
         "proposal": proposal,
         "execution": execute_proposal(case, proposal),
         "error": None,
@@ -273,14 +272,29 @@ def predict_from_gold(case: dict[str, Any]) -> dict[str, Any]:
 
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
+    from config.settings import get_settings
+
+    settings = get_settings()
+    structured_method = args.structured_method or settings.ai_structured_method
     cases = load_cases(args.dataset)
+    if args.one_per_category:
+        seen: set[str] = set()
+        selected = []
+        for case in cases:
+            if case["category"] not in seen:
+                seen.add(case["category"])
+                selected.append(case)
+        cases = selected
     if args.limit is not None:
         cases = cases[: args.limit]
     output_dir: Path = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     predictions_path = output_dir / "predictions.jsonl"
     prior = read_jsonl(predictions_path) if args.resume and predictions_path.exists() else []
-    prior_by_id = {item["case_id"]: item for item in prior}
+    prior_by_id = {
+        item["case_id"]: item for item in prior
+        if item.get("status") == "success"
+    }
     pending = [case for case in cases if case["case_id"] not in prior_by_id]
 
     new_predictions: list[dict[str, Any]]
@@ -288,20 +302,17 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     if args.mode == "gold":
         new_predictions = [predict_from_gold(case) for case in pending]
     else:
-        from config.settings import get_settings
-
-        settings = get_settings()
         model_name = settings.ai_model
         model = get_proposal_model(
             timeout_seconds=args.request_timeout_seconds,
             max_retries=args.max_retries,
-            structured_method=args.structured_method,
+            structured_method=structured_method,
         )
         semaphore = asyncio.Semaphore(args.concurrency)
         rules_context = supported_rules_context()
         output_schema = (
             AgentPlanProposal.model_json_schema()
-            if args.structured_method == "json_mode" else None
+            if structured_method == "json_mode" else None
         )
         new_predictions = list(
             await asyncio.gather(
@@ -341,12 +352,14 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         "model": model_name,
         "dataset": args.dataset,
         "rule_list_version": RULE_LIST_VERSION,
-        "structured_method": args.structured_method,
+        "structured_method": structured_method,
         "case_count": len(cases),
         "resumed_case_count": len(cases) - len(pending),
         "new_case_count": len(pending),
         "label_review_status_counts": dict(sorted(review_status_counts.items())),
-        "official_gold_evaluation": set(review_status_counts) == {"approved"},
+        "official_gold_evaluation": (
+            args.mode == "ai" and set(review_status_counts) == {"approved"}
+        ),
     }
     summary_path = output_dir / "summary.json"
     summary_path.write_text(
@@ -367,6 +380,7 @@ def parse_args() -> argparse.Namespace:
         "--dataset", choices=("original", "full", "all"), default="all"
     )
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--one-per-category", action="store_true")
     parser.add_argument("--concurrency", type=int, default=1, choices=range(1, 21))
     parser.add_argument(
         "--request-timeout-seconds", type=int, default=None
@@ -375,7 +389,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--structured-method",
         choices=("json_schema", "function_calling", "json_mode"),
-        default="json_schema",
+        default=None,
     )
     parser.add_argument(
         "--output-dir", type=Path, default=ROOT / "results" / "latest"

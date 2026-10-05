@@ -10,6 +10,7 @@ from config.database import (
 )
 from config.checkpoint import open_checkpointer
 from config.settings import get_settings
+from config.telemetry import configure_telemetry
 from middleware.error_handler import (
     register_exception_handlers,
 )
@@ -42,7 +43,13 @@ async def lifespan(
             application.state.checkpointer = checkpointer
             yield
     finally:
-        await close_database_connection()
+        try:
+            providers = getattr(application.state, "telemetry_providers", None)
+            if providers:
+                for provider in providers:
+                    provider.shutdown()
+        finally:
+            await close_database_connection()
 
 
 def create_application() -> FastAPI:
@@ -105,6 +112,10 @@ def create_application() -> FastAPI:
     application.include_router(
         migration_router,
         prefix=settings.api_prefix,
+    )
+
+    application.state.telemetry_providers = configure_telemetry(
+        application, settings.otlp_endpoint
     )
 
     return application

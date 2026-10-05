@@ -1,0 +1,20 @@
+{
+  "schema_name": "customer_source_review",
+  "schema_role": "source",
+  "schema_format_version": "1.0",
+  "additional_fields_policy": "profile",
+  "business_key": null,
+  "fields": [
+    {"name": "customer_id", "type": "string", "required": true, "nullable": false, "description": "Decimal digits with no leading zeroes in this sample."},
+    {"name": "first_name", "type": "string", "required": true, "nullable": false},
+    {"name": "last_name", "type": "string", "required": true, "nullable": false},
+    {"name": "email", "type": "string", "required": true, "nullable": false},
+    {"name": "date_of_birth", "type": "string", "required": true, "nullable": false, "format": "%d/%m/%Y", "description": "Day/month/four-digit-year date text."},
+    {"name": "is_active", "type": "string", "required": true, "nullable": false, "description": "YES means true; NO means false.", "allowed_values": ["YES", "NO"]},
+    {"name": "annual_income", "type": "string", "required": true, "nullable": false, "description": "Decimal text with comma thousands separators and a dot decimal separator."},
+    {"name": "address", "type": "object", "required": true, "nullable": false, "description": "Contains city text and a numeric postal_code."},
+    {"name": "interests", "type": "string", "required": true, "nullable": false, "description": "Comma-separated list of interests."},
+    {"name": "phone", "type": "string", "required": false, "nullable": true, "description": "Empty text means no phone number."},
+    {"name": "country_code", "type": "string", "required": true, "nullable": false, "description": "Two-letter ISO country code; case may vary."}
+  ]
+}

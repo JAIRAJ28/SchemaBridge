@@ -27,6 +27,10 @@ def get_ai_model(
         base_url=settings.ai_base_url,
         api_key=api_key,
         temperature=settings.ai_temperature,
+        extra_body=(
+            {"chat_template_kwargs": {"enable_thinking": False}}
+            if settings.ai_model.startswith("Qwen/Qwen3.5-") else None
+        ),
         max_tokens=settings.ai_max_output_tokens,
         timeout=timeout_seconds or settings.ai_timeout_seconds,
         max_retries=(
@@ -43,6 +47,7 @@ def get_proposal_model(
 ):
     settings = get_settings()
     method = structured_method or settings.ai_structured_method
+
     model = get_ai_model(
         timeout_seconds=timeout_seconds,
         max_retries=max_retries,
@@ -52,4 +57,5 @@ def get_proposal_model(
         AgentPlanProposal,
         method=method,
         strict=True if method == "json_schema" else None,
+        include_raw=True,
     )

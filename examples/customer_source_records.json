@@ -1,0 +1,28 @@
+[
+  {
+    "customer_id": "10025",
+    "first_name": "Alex",
+    "last_name": "Example",
+    "email": "  ALEX.EXAMPLE@EXAMPLE.COM  ",
+    "date_of_birth": "15/08/1995",
+    "is_active": "YES",
+    "annual_income": "1,250,000.50",
+    "address": {"city": "  Example City ", "postal_code": 123456},
+    "interests": "AI, Data Engineering",
+    "phone": "",
+    "country_code": "in"
+  },
+  {
+    "customer_id": "10026",
+    "first_name": "Taylor",
+    "last_name": "Sample",
+    "email": "  TAYLOR.SAMPLE@EXAMPLE.COM  ",
+    "date_of_birth": "02/11/1988",
+    "is_active": "NO",
+    "annual_income": "not-a-number",
+    "address": {"city": "  Sample Town ", "postal_code": 654321},
+    "interests": "Testing, Data",
+    "phone": "",
+    "country_code": "us"
+  }
+]

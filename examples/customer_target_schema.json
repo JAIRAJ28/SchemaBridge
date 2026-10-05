@@ -1,0 +1,20 @@
+{
+  "schema_name": "customer_target_review",
+  "schema_role": "target",
+  "schema_format_version": "1.0",
+  "additional_fields_policy": "reject",
+  "business_key": "id",
+  "fields": [
+    {"name": "id", "type": "integer", "required": true, "nullable": false, "unique": true},
+    {"name": "full_name", "type": "string", "required": true, "nullable": false, "description": "First and last name joined with one space."},
+    {"name": "email_address", "type": "string", "required": true, "nullable": false, "description": "Trimmed, lowercase email address."},
+    {"name": "birth_date", "type": "date", "required": true, "nullable": false, "format": "%Y-%m-%d"},
+    {"name": "active", "type": "boolean", "required": true, "nullable": false},
+    {"name": "annual_income", "type": "decimal", "required": true, "nullable": false, "precision": 14, "scale": 2},
+    {"name": "city", "type": "string", "required": true, "nullable": false, "description": "Trimmed city from address."},
+    {"name": "postal_code", "type": "string", "required": true, "nullable": false, "description": "Postal code from address represented as text."},
+    {"name": "interests", "type": "array", "items_type": "string", "required": true, "nullable": false, "description": "Interests split at commas with each item trimmed."},
+    {"name": "phone_number", "type": "string", "required": false, "nullable": true, "description": "Null when source phone is empty."},
+    {"name": "country", "type": "string", "required": true, "nullable": false, "description": "Uppercase two-letter ISO country code."}
+  ]
+}
