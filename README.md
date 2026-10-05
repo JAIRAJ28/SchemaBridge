@@ -451,7 +451,7 @@ Set this Docker Command in the Render dashboard. It applies migrations before
 starting the single API instance; no paid dashboard shell is required:
 
 ```sh
-/bin/sh -c 'alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000} --no-access-log'
+/bin/sh /app/deployment/start.sh
 ```
 
 Add these environment variables in Render, replacing placeholders privately:
